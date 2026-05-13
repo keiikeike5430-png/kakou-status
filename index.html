@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>加工状況確認アプリ</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f4f0;
+    --panel: #ffffff;
+    --ink: #1a1a1a;
+    --ink-sub: #555;
+    --line: #d8d6cf;
+    --accent: #c8431a;
+    --accent-soft: #fdeae2;
+    --accent-2: #1e5f8b;
+    --accent-2-soft: #e2eef7;
+  }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 16px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  .container { max-width: 980px; margin: 0 auto; }
+
+  header {
+    background: var(--ink);
+    color: #fff;
+    padding: 18px 24px;
+    border-radius: 4px 4px 0 0;
+  }
+  header .title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  header .title small {
+    display: block;
+    font-size: 0.7rem;
+    color: #aaa;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  .pattern-tabs {
+    display: flex;
+    background: #2a2a2a;
+  }
+  .pattern-tab {
+    flex: 1;
+    padding: 16px 12px;
+    background: #2a2a2a;
+    color: #aaa;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-bottom: 4px solid transparent;
+    text-align: center;
+  }
+  .pattern-tab small {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: #888;
+    margin-top: 3px;
+  }
+  .pattern-tab.active {
+    background: var(--panel);
+    color: var(--ink);
+  }
+  .pattern-tab[data-pattern="1"].active { border-bottom-color: var(--accent); }
+  .pattern-tab[data-pattern="2"].active { border-bottom-color: var(--accent-2); }
+  .pattern-tab.active small { color: var(--ink-sub); }
+  .pattern-tab:hover:not(.active) { background: #333; color: #ddd; }
+
+  .main {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-top: none;
+    padding: 24px;
+  }
+
+  .main[data-active="1"] .accent-color { color: var(--accent); }
+  .main[data-active="1"] h2 { border-left-color: var(--accent); }
+  .main[data-active="1"] .result-card.highlight { background: var(--accent-soft); border-color: var(--accent); }
+  .main[data-active="1"] .result-card.highlight .lbl { color: var(--accent); }
+
+  .main[data-active="2"] .accent-color { color: var(--accent-2); }
+  .main[data-active="2"] h2 { border-left-color: var(--accent-2); }
+  .main[data-active="2"] .result-card.highlight { background: var(--accent-2-soft); border-color: var(--accent-2); }
+  .main[data-active="2"] .result-card.highlight .lbl { color: var(--accent-2); }
+
+  h2 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--ink-sub);
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+    padding-left: 10px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .pattern-section { display: none; }
+  .pattern-section.active { display: block; }
+
+  .pattern-intro {
+    font-size: 0.85rem;
+    color: var(--ink-sub);
+    background: #fafaf7;
+    padding: 10px 14px;
+    border-radius: 3px;
+    margin-bottom: 18px;
+    line-height: 1.6;
+  }
+
+  .input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .input-card {
+    background: #fafaf7;
+    border: 1px solid var(--line);
+    padding: 12px 14px;
+    border-radius: 3px;
+  }
+  .input-card label {
+    display: block;
+    font-size: 0.76rem;
+    color: var(--ink-sub);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .input-card input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-size: 1.1rem;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    background: #fff;
+  }
+  .input-card input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  .main[data-active="2"] .input-card input:focus {
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 2px var(--accent-2-soft);
+  }
+  .input-card .hint {
+    font-size: 0.7rem;
+    color: var(--ink-sub);
+    margin-top: 4px;
+  }
+  .input-card .quick-btns {
+    margin-top: 4px;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .input-card .quick-btns button {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--ink-sub);
+  }
+  .input-card .quick-btns button:hover {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  .results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .result-card {
+    border: 1px solid var(--line);
+    padding: 16px;
+    border-radius: 3px;
+    background: #fff;
+  }
+  .result-card .lbl {
+    font-size: 0.75rem;
+    color: var(--ink-sub);
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+  .result-card .val {
+    font-size: 2.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .result-card .val .unit {
+    font-size: 0.95rem;
+    color: var(--ink-sub);
+    font-weight: 500;
+    margin-left: 4px;
+  }
+  .result-card .sub {
+    font-size: 0.78rem;
+    color: var(--ink-sub);
+    margin-top: 6px;
+  }
+
+  .totals {
+    background: var(--ink);
+    color: #fff;
+    padding: 20px 24px;
+    border-radius: 3px;
+    margin-top: 16px;
+  }
+  .totals h2 {
+    color: #ccc;
+    border-left-color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .main[data-active="2"] .totals h2 { border-left-color: var(--accent-2); }
+  .totals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 18px;
+  }
+  .totals-item .t-lbl {
+    font-size: 0.72rem;
+    color: #999;
+    margin-bottom: 6px;
+    letter-spacing: 0.1em;
+  }
+  .totals-item .t-val {
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+  }
+  .totals-item .t-val .unit {
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-left: 3px;
+    font-weight: 500;
+  }
+  .main[data-active="1"] .totals-item.accent .t-val { color: #ff8a5b; }
+  .main[data-active="2"] .totals-item.accent .t-val { color: #6db4e4; }
+
+  .work-info {
+    background: #fafaf7;
+    border: 1px solid var(--line);
+    padding: 12px 16px;
+    border-radius: 3px;
+    margin-bottom: 20px;
+    font-size: 0.82rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    color: var(--ink-sub);
+  }
+  .work-info span strong {
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    margin-left: 4px;
+  }
+
+  .settings {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: #fafaf7;
+    border: 1px dashed var(--line);
+    border-radius: 3px;
+  }
+  .settings-toggle {
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--ink-sub);
+    user-select: none;
+    font-weight: 600;
+  }
+  .settings-body { display: none; margin-top: 12px; font-size: 0.82rem; line-height: 1.7; }
+  .settings-body.open { display: block; }
+  .breaks span {
+    display: inline-block;
+    background: #eaeae0;
+    padding: 2px 8px;
+    border-radius: 2px;
+    margin-right: 6px;
+    font-size: 0.75rem;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--ink-sub);
+    margin-top: 20px;
+    padding: 10px;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 14px 16px; }
+    header .title { font-size: 1.1rem; }
+    .main { padding: 16px; }
+    .result-card .val { font-size: 1.8rem; }
+    .pattern-tab { font-size: 0.85rem; padding: 12px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="title">
+      加工状況確認アプリ
+      <small>PROCESSING STATUS MONITOR</small>
+    </div>
+  </header>
+
+  <div class="pattern-tabs">
+    <button class="pattern-tab active" data-pattern="1">
+      パターン1：予定ペース型
+      <small>予定ペースから着地予測</small>
+    </button>
+    <button class="pattern-tab" data-pattern="2">
+      パターン2：現状ペース型
+      <small>現実績から着地予測</small>
+    </button>
+  </div>
+
+  <div class="main" data-active="1">
+
+    <!-- パターン1 -->
+    <div class="pattern-section active" data-pattern="1">
+
+      <div class="pattern-intro">
+        <strong>パターン1：予定ペース型</strong><br>
+        指定した時間あたりの加工予定数で進めた場合、就業時にいくつ完成するかを試算します。
+      </div>
+
+      <h2>入力</h2>
+      <div class="input-grid">
+        <div class="input-card">
+          <label>加工開始時刻</label>
+          <input type="time" id="p1-start" value="08:30">
+          <div class="quick-btns">
+            <button onclick="setTimeVal('p1-start', '08:30')">8:30</button>
+            <button onclick="setTimeVal('p1-start', '08:45')">8:45</button>
+            <button onclick="setTimeVal('p1-start', '09:00')">9:00</button>
+          </div>
+        </div>
+        <div class="input-card">
+          <label>現在時刻（任意設定）</label>
+          <input type="time" id="p1-now" value="12:00">
+          <div class="quick-btns">
+            <button onclick="setRealNow('p1-now')">現在</button>
+          </div>
+        </div>
+        <div class="input-card">
+          <label>現在の生産数</label>
+          <input type="number" id="p1-count" min="0" value="0" inputmode="numeric">
+          <div class="hint">現時点までに加工した数</div>
+        </div>
+        <div class="input-card">
+          <label>時間あたりの加工予定数</label>
+          <input type="number" id="p1-pace" min="0" value="20" inputmode="numeric">
+          <div class="hint">個/時のペース</div>
+        </div>
+        <div class="input-card">
+          <label>就業時間（終了時刻）</label>
+          <input type="time" id="p1-end" value="17:30">
+          <div class="quick-btns">
+            <button onclick="setTimeVal('p1-end', '17:00')">17:00</button>
+            <button onclick="setTimeVal('p1-end', '17:10')">17:10</button>
+            <button onclick="setTimeVal('p1-end', '17:15')">17:15</button>
+            <button onclick="setTimeVal('p1-end', '17:30')">17:30</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="work-info" id="p1-info"></div>
+
+      <h2>試算結果</h2>
+      <div class="results">
+        <div class="result-card highlight">
+          <div class="lbl">就業時の着地予測</div>
+          <div class="val accent-color"><span id="p1-pred">--</span><span class="unit">個</span></div>
+          <div class="sub" id="p1-pred-sub">--</div>
+        </div>
+        <div class="result-card">
+          <div class="lbl">現在から終了までに作る数</div>
+          <div class="val"><span id="p1-add">--</span><span class="unit">個</span></div>
+          <div class="sub" id="p1-add-sub">--</div>
+        </div>
+        <div class="result-card">
+          <div class="lbl">残り稼働時間</div>
+          <div class="val"><span id="p1-remain">--</span></div>
+          <div class="sub">休憩時間を除いた実働時間</div>
+        </div>
+      </div>
+
+      <div class="totals">
+        <h2>合計値</h2>
+        <div class="totals-grid">
+          <div class="totals-item">
+            <div class="t-lbl">現在の生産数</div>
+            <div class="t-val"><span id="p1-tot-current">0</span><span class="unit">個</span></div>
+          </div>
+          <div class="totals-item">
+            <div class="t-lbl">追加で作る数</div>
+            <div class="t-val">+<span id="p1-tot-add">0</span><span class="unit">個</span></div>
+          </div>
+          <div class="totals-item accent">
+            <div class="t-lbl">就業時 着地予測</div>
+            <div class="t-val"><span id="p1-tot-pred">0</span><span class="unit">個</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- パターン2 -->
+    <div class="pattern-section" data-pattern="2">
+
+      <div class="pattern-intro">
+        <strong>パターン2：現状ペース型</strong><br>
+        開始から現在までの実績ペースを維持した場合、就業時にいくつ完成するかを試算します。
+      </div>
+
+      <h2>入力</h2>
+      <div class="input-grid">
+        <div class="input-card">
+          <label>加工開始時刻</label>
+          <input type="time" id="p2-start" value="08:30">
+          <div class="quick-btns">
+            <button onclick="setTimeVal('p2-start', '08:30')">8:30</button>
+            <button onclick="setTimeVal('p2-start', '08:45')">8:45</button>
+            <button onclick="setTimeVal('p2-start', '09:00')">9:00</button>
+          </div>
+        </div>
+        <div class="input-card">
+          <label>現在時刻(任意設定)</label>
+          <input type="time" id="p2-now" value="12:00">
+          <div class="quick-btns">
+            <button onclick="setRealNow('p2-now')">現在</button>
+          </div>
+        </div>
+        <div class="input-card">
+          <label>現在の生産数</label>
+          <input type="number" id="p2-count" min="0" value="0" inputmode="numeric">
+          <div class="hint">現時点までに加工した実績数</div>
+        </div>
+        <div class="input-card">
+          <label>就業時間(終了時刻)</label>
+          <input type="time" id="p2-end" value="17:30">
+          <div class="quick-btns">
+            <button onclick="setTimeVal('p2-end', '17:00')">17:00</button>
+            <button onclick="setTimeVal('p2-end', '17:10')">17:10</button>
+            <button onclick="setTimeVal('p2-end', '17:15')">17:15</button>
+            <button onclick="setTimeVal('p2-end', '17:30')">17:30</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="work-info" id="p2-info"></div>
+
+      <h2>試算結果</h2>
+      <div class="results">
+        <div class="result-card highlight">
+          <div class="lbl">このペースのままの着地予測</div>
+          <div class="val accent-color"><span id="p2-pred">--</span><span class="unit">個</span></div>
+          <div class="sub" id="p2-pred-sub">--</div>
+        </div>
+        <div class="result-card">
+          <div class="lbl">現在の実績ペース</div>
+          <div class="val"><span id="p2-pace">--</span><span class="unit">個/時</span></div>
+          <div class="sub" id="p2-pace-sub">--</div>
+        </div>
+        <div class="result-card">
+          <div class="lbl">残り稼働時間</div>
+          <div class="val"><span id="p2-remain">--</span></div>
+          <div class="sub">休憩時間を除いた実働時間</div>
+        </div>
+      </div>
+
+      <div class="totals">
+        <h2>合計値</h2>
+        <div class="totals-grid">
+          <div class="totals-item">
+            <div class="t-lbl">現在までの実績</div>
+            <div class="t-val"><span id="p2-tot-current">0</span><span class="unit">個</span></div>
+          </div>
+          <div class="totals-item">
+            <div class="t-lbl">これから増える見込み</div>
+            <div class="t-val">+<span id="p2-tot-add">0</span><span class="unit">個</span></div>
+          </div>
+          <div class="totals-item accent">
+            <div class="t-lbl">就業時 着地予測</div>
+            <div class="t-val"><span id="p2-tot-pred">0</span><span class="unit">個</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings">
+      <div class="settings-toggle" id="settings-toggle">▸ 詳細設定(休憩時間の確認)</div>
+      <div class="settings-body" id="settings-body">
+        <strong>デフォルト就業時間：</strong>8:30 ～ 17:30<br>
+        <strong>休憩時間(自動除外)：</strong>
+        <div class="breaks" style="margin-top:6px;">
+          <span>10:30 - 10:35</span>
+          <span>12:15 - 13:15</span>
+          <span>15:00 - 15:15</span>
+        </div>
+        <div style="margin-top:8px; color:var(--ink-sub);">
+          ※休憩時間は計算から自動的に除外されます
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>加工状況確認アプリ ／ 竹野株式会社 法隆寺工場 第3工場</footer>
+</div>
+
+<script>
+const BREAKS = [
+  { start: { h: 10, m: 30 }, end: { h: 10, m: 35 } },
+  { start: { h: 12, m: 15 }, end: { h: 13, m: 15 } },
+  { start: { h: 15, m: 0 }, end: { h: 15, m: 15 } }
+];
+
+function toMinutes(t) { return t.h * 60 + t.m; }
+function timeToMin(str) {
+  if (!str) return null;
+  const [h, m] = str.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function netWorkMinutes(startMin, endMin) {
+  if (endMin <= startMin) return 0;
+  let total = endMin - startMin;
+  for (const b of BREAKS) {
+    const bs = toMinutes(b.start);
+    const be = toMinutes(b.end);
+    const overlap = Math.max(0, Math.min(endMin, be) - Math.max(startMin, bs));
+    total -= overlap;
+  }
+  return Math.max(0, total);
+}
+
+function fmtDuration(min) {
+  if (min <= 0) return '0分';
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  if (h === 0) return `${m}分`;
+  if (m === 0) return `${h}時間`;
+  return `${h}時間${m}分`;
+}
+
+function setTimeVal(id, val) {
+  document.getElementById(id).value = val;
+  recalcAll();
+}
+
+function setRealNow(id) {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById(id).value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  recalcAll();
+}
+
+document.querySelectorAll('.pattern-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const p = btn.dataset.pattern;
+    document.querySelectorAll('.pattern-tab').forEach(b => b.classList.toggle('active', b.dataset.pattern === p));
+    document.querySelectorAll('.pattern-section').forEach(s => s.classList.toggle('active', s.dataset.pattern === p));
+    document.querySelector('.main').dataset.active = p;
+  });
+});
+
+function recalcP1() {
+  const startMin = timeToMin(document.getElementById('p1-start').value);
+  const nowMin = timeToMin(document.getElementById('p1-now').value);
+  const endMin = timeToMin(document.getElementById('p1-end').value);
+  const count = parseInt(document.getElementById('p1-count').value) || 0;
+  const pace = parseFloat(document.getElementById('p1-pace').value) || 0;
+
+  if (startMin == null || nowMin == null || endMin == null) return;
+
+  const effectiveNow = Math.min(Math.max(nowMin, startMin), endMin);
+  const remainMin = netWorkMinutes(effectiveNow, endMin);
+
+  const addCount = Math.floor((pace * remainMin) / 60);
+  const predicted = count + addCount;
+
+  document.getElementById('p1-pred').textContent = predicted;
+  document.getElementById('p1-pred-sub').textContent =
+    `現在${count}個 + 残り${fmtDuration(remainMin)}で${addCount}個`;
+
+  document.getElementById('p1-add').textContent = addCount;
+  document.getElementById('p1-add-sub').textContent =
+    pace > 0 ? `${pace}個/時 × ${fmtDuration(remainMin)}` : 'ペースを入力してください';
+
+  document.getElementById('p1-remain').textContent = fmtDuration(remainMin);
+
+  const totalWork = netWorkMinutes(startMin, endMin);
+  const elapsed = netWorkMinutes(startMin, effectiveNow);
+  document.getElementById('p1-info').innerHTML =
+    `<span>本日稼働時間 <strong>${fmtDuration(totalWork)}</strong></span>` +
+    `<span>経過 <strong>${fmtDuration(elapsed)}</strong></span>` +
+    `<span>残り <strong>${fmtDuration(remainMin)}</strong></span>`;
+
+  document.getElementById('p1-tot-current').textContent = count;
+  document.getElementById('p1-tot-add').textContent = addCount;
+  document.getElementById('p1-tot-pred').textContent = predicted;
+}
+
+function recalcP2() {
+  const startMin = timeToMin(document.getElementById('p2-start').value);
+  const nowMin = timeToMin(document.getElementById('p2-now').value);
+  const endMin = timeToMin(document.getElementById('p2-end').value);
+  const count = parseInt(document.getElementById('p2-count').value) || 0;
+
+  if (startMin == null || nowMin == null || endMin == null) return;
+
+  const effectiveNow = Math.min(Math.max(nowMin, startMin), endMin);
+  const workedMin = netWorkMinutes(startMin, effectiveNow);
+  const remainMin = netWorkMinutes(effectiveNow, endMin);
+
+  let actualPace = 0;
+  if (workedMin > 0 && count > 0) {
+    actualPace = (count / workedMin) * 60;
+  }
+
+  let addCount = 0;
+  if (actualPace > 0 && remainMin > 0) {
+    addCount = Math.floor((actualPace * remainMin) / 60);
+  }
+  const predicted = count + addCount;
+
+  document.getElementById('p2-pred').textContent = predicted;
+  document.getElementById('p2-pred-sub').textContent =
+    actualPace > 0
+      ? `現在${count}個 + 残り${fmtDuration(remainMin)}で${addCount}個`
+      : '実績入力でペースを算出します';
+
+  document.getElementById('p2-pace').textContent =
+    actualPace > 0 ? actualPace.toFixed(1) : '--';
+  document.getElementById('p2-pace-sub').textContent =
+    actualPace > 0
+      ? `${fmtDuration(workedMin)}で${count}個／1個 約${(60 / actualPace).toFixed(2)}分`
+      : '開始時刻・現在時刻・生産数を入力';
+
+  document.getElementById('p2-remain').textContent = fmtDuration(remainMin);
+
+  const totalWork = netWorkMinutes(startMin, endMin);
+  document.getElementById('p2-info').innerHTML =
+    `<span>本日稼働時間 <strong>${fmtDuration(totalWork)}</strong></span>` +
+    `<span>経過 <strong>${fmtDuration(workedMin)}</strong></span>` +
+    `<span>残り <strong>${fmtDuration(remainMin)}</strong></span>`;
+
+  document.getElementById('p2-tot-current').textContent = count;
+  document.getElementById('p2-tot-add').textContent = addCount;
+  document.getElementById('p2-tot-pred').textContent = predicted;
+}
+
+function recalcAll() {
+  recalcP1();
+  recalcP2();
+}
+
+['p1-start', 'p1-now', 'p1-end', 'p1-count', 'p1-pace',
+ 'p2-start', 'p2-now', 'p2-end', 'p2-count'].forEach(id => {
+  document.getElementById(id).addEventListener('input', recalcAll);
+});
+
+document.getElementById('settings-toggle').addEventListener('click', () => {
+  const body = document.getElementById('settings-body');
+  body.classList.toggle('open');
+  const toggle = document.getElementById('settings-toggle');
+  toggle.textContent = body.classList.contains('open')
+    ? '▾ 詳細設定(休憩時間の確認)'
+    : '▸ 詳細設定(休憩時間の確認)';
+});
+
+(function init() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const nowStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('p1-now').value = nowStr;
+  document.getElementById('p2-now').value = nowStr;
+  recalcAll();
+})();
+</script>
+</body>
+</html>
